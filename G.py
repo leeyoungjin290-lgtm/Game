@@ -1,36 +1,29 @@
-python
 import pygame
 import random
 import math
 import sys
-
-# =========================================================
-# 초기 설정
-# =========================================================
+import os
 
 pygame.init()
 
 WIDTH = 1000
 HEIGHT = 650
+FPS = 60
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("6 Stage Battle")
-
 clock = pygame.time.Clock()
 
-FPS = 60
 
-
-# =========================================================
+# ==============================
 # 이미지 로드
-# =========================================================
+# ==============================
 
 def load_image(filename):
     try:
-        image = pygame.image.load(filename).convert_alpha()
-        return image
+        return pygame.image.load(filename).convert_alpha()
     except:
-        print(f"[경고] {filename} 을(를) 찾을 수 없습니다.")
+        print(f"[경고] {filename} 파일을 찾을 수 없습니다.")
         return None
 
 
@@ -43,39 +36,9 @@ bullet_img = load_image("bullet.png")
 hit_effect_img = load_image("hit_effect.png")
 
 
-# =========================================================
-# 폰트
-# =========================================================
-
-font_small = pygame.font.SysFont("malgungothic", 20)
-font = pygame.font.SysFont("malgungothic", 26)
-font_big = pygame.font.SysFont("malgungothic", 45)
-font_huge = pygame.font.SysFont("malgungothic", 65)
-
-
-# =========================================================
-# 색상
-# =========================================================
-
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (230, 60, 60)
-GREEN = (60, 220, 100)
-BLUE = (70, 150, 255)
-YELLOW = (255, 220, 50)
-PURPLE = (180, 70, 255)
-GRAY = (80, 80, 80)
-
-
-# =========================================================
-# 이미지 크기 조정
-# =========================================================
-
 def resize_image(image, size):
-
     if image is None:
         return None
-
     return pygame.transform.smoothscale(image, size)
 
 
@@ -88,14 +51,34 @@ hit_effect_img = resize_image(hit_effect_img, (60, 60))
 background_img = resize_image(background_img, (WIDTH, HEIGHT))
 
 
-# =========================================================
+# ==============================
+# 폰트
+# ==============================
+
+font_small = pygame.font.SysFont("malgungothic", 20)
+font = pygame.font.SysFont("malgungothic", 26)
+font_huge = pygame.font.SysFont("malgungothic", 60)
+
+
+# ==============================
+# 색상
+# ==============================
+
+WHITE = (255, 255, 255)
+RED = (230, 60, 60)
+GREEN = (60, 220, 100)
+BLUE = (70, 150, 255)
+YELLOW = (255, 220, 50)
+PURPLE = (180, 70, 255)
+
+
+# ==============================
 # 플레이어
-# =========================================================
+# ==============================
 
 player = {
     "x": WIDTH // 2,
     "y": HEIGHT // 2,
-
     "width": 60,
     "height": 60,
 
@@ -103,48 +86,41 @@ player = {
     "max_hp": 100,
 
     "atk": 10,
-
     "attack_speed": 1.0,
 
     "crit": 5,
-
     "crit_damage": 150,
 
     "move_speed": 4,
-
     "cooldown": 0
 }
 
 
-# =========================================================
+# ==============================
 # 게임 변수
-# =========================================================
+# ==============================
 
 stage = 1
 
 pt = 0
+total_pt = 0
 
 kills = 0
 
 game_running = True
-
 upgrade_screen = False
-
 result_screen = False
 
 stage_clear_processed = False
 
-
 enemies = []
-
 bullets = []
-
 effects = []
 
 
-# =========================================================
-# 적 생성
-# =========================================================
+# ==============================
+# 스테이지 생성
+# ==============================
 
 def spawn_stage():
 
@@ -159,10 +135,7 @@ def spawn_stage():
 
     stage_clear_processed = False
 
-    # -----------------------------------------------------
     # 6스테이지 보스
-    # -----------------------------------------------------
-
     if stage == 6:
 
         enemies.append({
@@ -178,7 +151,6 @@ def spawn_stage():
             "max_hp": 1500,
 
             "speed": 0.8,
-
             "damage": 20,
 
             "attack_cooldown": 0
@@ -186,10 +158,6 @@ def spawn_stage():
 
         return
 
-
-    # -----------------------------------------------------
-    # 일반 스테이지
-    # -----------------------------------------------------
 
     enemy_count = 5 + stage * 3
 
@@ -199,32 +167,29 @@ def spawn_stage():
 
         if is_tank:
 
+            enemy_type = "tank"
+
             width = 70
             height = 70
 
             hp = 70 + stage * 15
-
             speed = 0.6 + stage * 0.05
-
             damage = 12 + stage * 2
 
-            enemy_type = "tank"
-
         else:
+
+            enemy_type = "normal"
 
             width = 50
             height = 50
 
             hp = 30 + stage * 10
-
             speed = 1.0 + stage * 0.1
-
             damage = 5 + stage
-
-            enemy_type = "normal"
 
 
         enemies.append({
+
             "type": enemy_type,
 
             "x": random.randint(70, WIDTH - 70),
@@ -237,30 +202,31 @@ def spawn_stage():
             "max_hp": hp,
 
             "speed": speed,
-
             "damage": damage,
 
             "attack_cooldown": 0
         })
 
 
-# =========================================================
-# 이미지 중앙 배치
-# =========================================================
+# ==============================
+# 이미지 중앙 그리기
+# ==============================
 
 def draw_center(image, x, y):
 
     if image is None:
         return
 
-    rect = image.get_rect(center=(int(x), int(y)))
+    rect = image.get_rect(
+        center=(int(x), int(y))
+    )
 
     screen.blit(image, rect)
 
 
-# =========================================================
+# ==============================
 # 플레이어 이동
-# =========================================================
+# ==============================
 
 def update_player():
 
@@ -293,8 +259,6 @@ def update_player():
         player["y"] += dy * player["move_speed"]
 
 
-    # 화면 밖으로 못 나가게
-
     half_w = player["width"] // 2
     half_h = player["height"] // 2
 
@@ -309,9 +273,9 @@ def update_player():
     )
 
 
-# =========================================================
+# ==============================
 # 공격
-# =========================================================
+# ==============================
 
 def shoot():
 
@@ -321,13 +285,10 @@ def shoot():
 
     mouse_x, mouse_y = pygame.mouse.get_pos()
 
-
     dx = mouse_x - player["x"]
     dy = mouse_y - player["y"]
 
-
     distance = math.sqrt(dx * dx + dy * dy)
-
 
     if distance == 0:
         return
@@ -337,16 +298,15 @@ def shoot():
     dy /= distance
 
 
-    # 치명타 판정
-
-    critical = random.random() * 100 < player["crit"]
+    critical = (
+        random.random() * 100
+        < player["crit"]
+    )
 
 
     damage = player["atk"]
 
-
     if critical:
-
         damage *= player["crit_damage"] / 100
 
 
@@ -359,20 +319,18 @@ def shoot():
         "vy": dy * 10,
 
         "damage": damage,
-
         "critical": critical
     })
 
 
-    # 공격속도
-    # 값이 높을수록 공격 간격이 짧아짐
+    player["cooldown"] = (
+        30 / player["attack_speed"]
+    )
 
-    player["cooldown"] = 30 / player["attack_speed"]
 
-
-# =========================================================
+# ==============================
 # 총알 업데이트
-# =========================================================
+# ==============================
 
 def update_bullets():
 
@@ -382,8 +340,6 @@ def update_bullets():
         bullet["y"] += bullet["vy"]
 
 
-        # 화면 밖
-
         if (
             bullet["x"] < -30 or
             bullet["x"] > WIDTH + 30 or
@@ -391,27 +347,26 @@ def update_bullets():
             bullet["y"] > HEIGHT + 30
         ):
 
-            bullets.remove(bullet)
+            if bullet in bullets:
+                bullets.remove(bullet)
 
             continue
 
-
-        # 적과 충돌
 
         for enemy in enemies[:]:
 
             dx = bullet["x"] - enemy["x"]
             dy = bullet["y"] - enemy["y"]
 
-            distance = math.sqrt(dx * dx + dy * dy)
+            distance = math.sqrt(
+                dx * dx + dy * dy
+            )
 
 
             if distance < enemy["width"] / 2 + 10:
 
                 enemy["hp"] -= bullet["damage"]
 
-
-                # 공격 효과
 
                 effects.append({
                     "x": enemy["x"],
@@ -424,23 +379,21 @@ def update_bullets():
                     bullets.remove(bullet)
 
 
-                # 적 사망
-
                 if enemy["hp"] <= 0:
-
                     kill_enemy(enemy)
 
 
                 break
 
 
-# =========================================================
+# ==============================
 # 적 처치
-# =========================================================
+# ==============================
 
 def kill_enemy(enemy):
 
     global pt
+    global total_pt
     global kills
 
 
@@ -458,7 +411,7 @@ def kill_enemy(enemy):
 
 
     pt += reward
-
+    total_pt += reward
     kills += 1
 
 
@@ -466,22 +419,20 @@ def kill_enemy(enemy):
         enemies.remove(enemy)
 
 
-# =========================================================
+# ==============================
 # 적 AI
-# =========================================================
+# ==============================
 
 def update_enemies():
-
-    global game_running
-
 
     for enemy in enemies:
 
         dx = player["x"] - enemy["x"]
         dy = player["y"] - enemy["y"]
 
-
-        distance = math.sqrt(dx * dx + dy * dy)
+        distance = math.sqrt(
+            dx * dx + dy * dy
+        )
 
 
         if distance == 0:
@@ -489,27 +440,22 @@ def update_enemies():
 
 
         collision_distance = (
-            player["width"] / 2 +
-            enemy["width"] / 2
+            player["width"] / 2
+            + enemy["width"] / 2
         )
 
-
-        # 플레이어에게 이동
 
         if distance > collision_distance:
 
             enemy["x"] += (
-                dx / distance *
-                enemy["speed"]
+                dx / distance
+                * enemy["speed"]
             )
 
             enemy["y"] += (
-                dy / distance *
-                enemy["speed"]
+                dy / distance
+                * enemy["speed"]
             )
-
-
-        # 공격
 
         else:
 
@@ -521,11 +467,8 @@ def update_enemies():
 
 
         if enemy["attack_cooldown"] > 0:
-
             enemy["attack_cooldown"] -= 1
 
-
-    # 플레이어 사망
 
     if player["hp"] <= 0:
 
@@ -534,20 +477,17 @@ def update_enemies():
         game_over()
 
 
-# =========================================================
+# ==============================
 # 업그레이드
-# =========================================================
+# ==============================
 
 def upgrade_attack():
 
     global pt
 
-    cost = 50
+    if pt >= 50:
 
-    if pt >= cost:
-
-        pt -= cost
-
+        pt -= 50
         player["atk"] += 5
 
 
@@ -555,12 +495,9 @@ def upgrade_speed():
 
     global pt
 
-    cost = 70
+    if pt >= 70:
 
-    if pt >= cost:
-
-        pt -= cost
-
+        pt -= 70
         player["attack_speed"] += 0.1
 
 
@@ -568,12 +505,9 @@ def upgrade_crit():
 
     global pt
 
-    cost = 80
+    if pt >= 80:
 
-    if pt >= cost:
-
-        pt -= cost
-
+        pt -= 80
         player["crit"] += 5
 
 
@@ -581,18 +515,15 @@ def upgrade_crit_damage():
 
     global pt
 
-    cost = 100
+    if pt >= 100:
 
-    if pt >= cost:
-
-        pt -= cost
-
+        pt -= 100
         player["crit_damage"] += 25
 
 
-# =========================================================
+# ==============================
 # 다음 스테이지
-# =========================================================
+# ==============================
 
 def next_stage():
 
@@ -600,54 +531,45 @@ def next_stage():
     global upgrade_screen
     global game_running
 
-
     stage += 1
-
 
     player["hp"] = player["max_hp"]
 
-
     upgrade_screen = False
-
     game_running = True
-
 
     spawn_stage()
 
 
-# =========================================================
+# ==============================
 # 게임 오버
-# =========================================================
+# ==============================
 
 def game_over():
 
     global game_running
     global result_screen
 
-
     game_running = False
-
     result_screen = True
 
 
-# =========================================================
+# ==============================
 # 게임 클리어
-# =========================================================
+# ==============================
 
 def victory():
 
     global game_running
     global result_screen
 
-
     game_running = False
-
     result_screen = True
 
 
-# =========================================================
+# ==============================
 # 스테이지 클리어 확인
-# =========================================================
+# ==============================
 
 def check_stage_clear():
 
@@ -667,8 +589,6 @@ def check_stage_clear():
     stage_clear_processed = True
 
 
-    # 6스테이지 클리어
-
     if stage == 6:
 
         victory()
@@ -676,16 +596,13 @@ def check_stage_clear():
         return
 
 
-    # 업그레이드 화면
-
     game_running = False
-
     upgrade_screen = True
 
 
-# =========================================================
+# ==============================
 # 버튼
-# =========================================================
+# ==============================
 
 def draw_button(rect, text):
 
@@ -723,13 +640,11 @@ def draw_button(rect, text):
     )
 
 
-# =========================================================
+# ==============================
 # 게임 화면
-# =========================================================
+# ==============================
 
 def draw_game():
-
-    # 배경
 
     if background_img is not None:
 
@@ -740,7 +655,9 @@ def draw_game():
 
     else:
 
-        screen.fill((15, 15, 25))
+        screen.fill(
+            (15, 15, 25)
+        )
 
 
     # 총알
@@ -757,9 +674,15 @@ def draw_game():
 
         else:
 
+            color = (
+                YELLOW
+                if bullet["critical"]
+                else WHITE
+            )
+
             pygame.draw.circle(
                 screen,
-                YELLOW if bullet["critical"] else WHITE,
+                color,
                 (
                     int(bullet["x"]),
                     int(bullet["y"])
@@ -812,11 +735,14 @@ def draw_game():
             )
 
 
-        # HP 바
+        # 적 HP바
 
         bar_width = enemy["width"]
 
-        bar_x = enemy["x"] - bar_width / 2
+        bar_x = (
+            enemy["x"]
+            - bar_width / 2
+        )
 
         bar_y = (
             enemy["y"]
@@ -839,7 +765,8 @@ def draw_game():
 
         hp_ratio = max(
             0,
-            enemy["hp"] / enemy["max_hp"]
+            enemy["hp"]
+            / enemy["max_hp"]
         )
 
 
@@ -862,8 +789,9 @@ def draw_game():
         if hit_effect_img is not None:
 
             alpha = int(
-                255 *
-                effect["timer"] / 12
+                255
+                * effect["timer"]
+                / 12
             )
 
             temp = hit_effect_img.copy()
@@ -903,14 +831,12 @@ def draw_game():
         )
 
 
-    # UI
-
     draw_ui()
 
 
-# =========================================================
+# ==============================
 # UI
-# =========================================================
+# ==============================
 
 def draw_ui():
 
@@ -951,8 +877,6 @@ def draw_ui():
         y += 25
 
 
-    # 스테이지
-
     stage_surface = font.render(
         f"STAGE {stage} / 6",
         True,
@@ -971,13 +895,15 @@ def draw_ui():
     )
 
 
-# =========================================================
+# ==============================
 # 업그레이드 화면
-# =========================================================
+# ==============================
 
 def draw_upgrade():
 
-    screen.fill((12, 12, 20))
+    screen.fill(
+        (12, 12, 20)
+    )
 
 
     title = font_huge.render(
@@ -992,7 +918,10 @@ def draw_upgrade():
     )
 
 
-    screen.blit(title, title_rect)
+    screen.blit(
+        title,
+        title_rect
+    )
 
 
     pt_text = font.render(
@@ -1007,7 +936,10 @@ def draw_upgrade():
     )
 
 
-    screen.blit(pt_text, pt_rect)
+    screen.blit(
+        pt_text,
+        pt_rect
+    )
 
 
     buttons = [
@@ -1072,25 +1004,28 @@ def draw_upgrade():
         )
 
 
-# =========================================================
+# ==============================
 # 결과 화면
-# =========================================================
+# ==============================
 
 def draw_result():
 
-    screen.fill((8, 8, 15))
+    screen.fill(
+        (8, 8, 15)
+    )
 
 
-    if stage == 6 and len(enemies) == 0:
+    if (
+        stage == 6
+        and len(enemies) == 0
+    ):
 
         title_text = "ALL STAGES CLEAR!"
-
         title_color = YELLOW
 
     else:
 
         title_text = "GAME OVER"
-
         title_color = RED
 
 
@@ -1102,7 +1037,7 @@ def draw_result():
 
 
     title_rect = title.get_rect(
-        center=(WIDTH // 2, 120)
+        center=(WIDTH // 2, 100)
     )
 
 
@@ -1114,7 +1049,7 @@ def draw_result():
 
     results = [
 
-        f"최종 점수: {pt} PT",
+        f"최종 점수: {total_pt} PT",
 
         f"총 처치 수: {kills}",
 
@@ -1132,7 +1067,7 @@ def draw_result():
     ]
 
 
-    y = 210
+    y = 180
 
 
     for text in results:
@@ -1155,7 +1090,7 @@ def draw_result():
         )
 
 
-        y += 42
+        y += 40
 
 
     restart_button = pygame.Rect(
@@ -1172,9 +1107,9 @@ def draw_result():
     )
 
 
-# =========================================================
+# ==============================
 # 효과 업데이트
-# =========================================================
+# ==============================
 
 def update_effects():
 
@@ -1188,16 +1123,14 @@ def update_effects():
             effects.remove(effect)
 
 
-# =========================================================
-# 마우스 클릭 처리
-# =========================================================
+# ==============================
+# 마우스 클릭
+# ==============================
 
 def handle_mouse_click(pos):
 
     global upgrade_screen
 
-
-    # 업그레이드 화면
 
     if upgrade_screen:
 
@@ -1264,8 +1197,6 @@ def handle_mouse_click(pos):
                 return
 
 
-    # 결과 화면
-
     if result_screen:
 
         restart_button = pygame.Rect(
@@ -1280,10 +1211,6 @@ def handle_mouse_click(pos):
 
             pygame.quit()
 
-            # 같은 프로그램 다시 실행
-
-            import os
-
             os.execl(
                 sys.executable,
                 sys.executable,
@@ -1291,12 +1218,11 @@ def handle_mouse_click(pos):
             )
 
 
-# =========================================================
-# 메인 루프
-# =========================================================
+# ==============================
+# 게임 시작
+# ==============================
 
 spawn_stage()
-
 
 running = True
 
@@ -1306,9 +1232,7 @@ while running:
     clock.tick(FPS)
 
 
-    # -----------------------------------------------------
     # 이벤트
-    # -----------------------------------------------------
 
     for event in pygame.event.get():
 
@@ -1326,8 +1250,6 @@ while running:
                 )
 
 
-        # ESC = 종료
-
         if event.type == pygame.KEYDOWN:
 
             if event.key == pygame.K_ESCAPE:
@@ -1335,16 +1257,12 @@ while running:
                 running = False
 
 
-    # -----------------------------------------------------
-    # 게임 플레이
-    # -----------------------------------------------------
+    # 게임 진행
 
     if game_running:
 
         update_player()
 
-
-        # 마우스 누르고 있으면 자동 공격
 
         if pygame.mouse.get_pressed()[0]:
 
@@ -1365,9 +1283,7 @@ while running:
         check_stage_clear()
 
 
-    # -----------------------------------------------------
-    # 화면
-    # -----------------------------------------------------
+    # 화면 출력
 
     if result_screen:
 
@@ -1386,6 +1302,4 @@ while running:
 
 
 pygame.quit()
-
 sys.exit()
-```
