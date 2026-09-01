@@ -1,2075 +1,1391 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>6 Stage Battle</title>
+```python
+import pygame
+import random
+import math
+import sys
 
-<style>
-* {
-    box-sizing: border-box;
-}
+# =========================================================
+# 초기 설정
+# =========================================================
 
-body {
-    margin: 0;
-    background: #111;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    color: white;
-}
+pygame.init()
 
-canvas {
-    display: block;
-    margin: auto;
-    background: #222;
-}
+WIDTH = 1000
+HEIGHT = 650
 
-#ui {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-    font-size: 17px;
-    line-height: 1.6;
-    text-shadow: 1px 1px 3px black;
-}
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("6 Stage Battle")
 
-#stageText {
-    position: fixed;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 25px;
-    font-weight: bold;
-    z-index: 10;
-}
+clock = pygame.time.Clock()
 
-#upgrade {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    z-index: 20;
-}
-
-#upgrade h1 {
-    font-size: 40px;
-}
-
-.upgradeButton {
-    width: 280px;
-    padding: 13px;
-    margin: 5px;
-    font-size: 17px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-#result {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    z-index: 30;
-}
-
-#result h1 {
-    font-size: 50px;
-}
-
-#result button {
-    padding: 14px 30px;
-    font-size: 18px;
-}
-</style>
-</head>
-
-<body>
-
-<canvas id="game" width="1000" height="650"></canvas>
-
-<div id="stageText">
-    STAGE 1
-</div>
-
-<div id="ui">
-    ❤️ HP: <span id="hp">100</span> / 100<br>
-    ⚔️ 공격력: <span id="atk">10</span><br>
-    ⚡ 공격속도: <span id="attackSpeed">1.0</span><br>
-    🎯 치명타 확률: <span id="crit">5</span>%<br>
-    💥 치명타 피해: <span id="critDamage">150</span>%<br>
-    💰 PT: <span id="pt">0</span><br>
-    👾 남은 적: <span id="enemyCount">0</span>
-</div>
+FPS = 60
 
 
-<!-- 업그레이드 화면 -->
+# =========================================================
+# 이미지 로드
+# =========================================================
 
-<div id="upgrade">
-
-    <h1>STAGE CLEAR!</h1>
-
-    <p>
-        PT를 사용해서 능력을 강화하세요.
-    </p>
-
-    <p>
-        현재 PT:
-        <strong id="upgradePT">0</strong>
-    </p>
-
-    <button class="upgradeButton"
-            onclick="upgrade('atk')">
-        공격력 +5
-        <br>
-        50 PT
-    </button>
-
-    <button class="upgradeButton"
-            onclick="upgrade('attackSpeed')">
-        공격속도 +10%
-        <br>
-        70 PT
-    </button>
-
-    <button class="upgradeButton"
-            onclick="upgrade('crit')">
-        치명타 확률 +5%
-        <br>
-        80 PT
-    </button>
-
-    <button class="upgradeButton"
-            onclick="upgrade('critDamage')">
-        치명타 피해 +25%
-        <br>
-        100 PT
-    </button>
-
-    <button class="upgradeButton"
-            onclick="nextStage()">
-        다음 스테이지
-    </button>
-
-</div>
+def load_image(filename):
+    try:
+        image = pygame.image.load(filename).convert_alpha()
+        return image
+    except:
+        print(f"[경고] {filename} 을(를) 찾을 수 없습니다.")
+        return None
 
 
-<!-- 결과 화면 -->
-
-<div id="result">
-
-    <h1 id="resultTitle">
-        GAME OVER
-    </h1>
-
-    <p id="resultText"></p>
-
-    <button onclick="location.reload()">
-        다시 시작
-    </button>
-
-</div>
+player_img = load_image("player.png")
+enemy_normal_img = load_image("enemy_normal.png")
+enemy_tank_img = load_image("enemy_tank.png")
+boss_img = load_image("boss.png")
+background_img = load_image("background.png")
+bullet_img = load_image("bullet.png")
+hit_effect_img = load_image("hit_effect.png")
 
 
-<script>
+# =========================================================
+# 폰트
+# =========================================================
 
-/* =====================================================
-   이미지
-===================================================== */
-
-const images = {};
-
-const imageFiles = {
-    player: "player.png",
-    enemyNormal: "enemy_normal.png",
-    enemyTank: "enemy_tank.png",
-    boss: "boss.png",
-    background: "background.png",
-    bullet: "bullet.png",
-    hitEffect: "hit_effect.png"
-};
+font_small = pygame.font.SysFont("malgungothic", 20)
+font = pygame.font.SysFont("malgungothic", 26)
+font_big = pygame.font.SysFont("malgungothic", 45)
+font_huge = pygame.font.SysFont("malgungothic", 65)
 
 
-for (const key in imageFiles) {
+# =========================================================
+# 색상
+# =========================================================
 
-    const img = new Image();
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (230, 60, 60)
+GREEN = (60, 220, 100)
+BLUE = (70, 150, 255)
+YELLOW = (255, 220, 50)
+PURPLE = (180, 70, 255)
+GRAY = (80, 80, 80)
 
-    img.src = imageFiles[key];
 
-    images[key] = img;
+# =========================================================
+# 이미지 크기 조정
+# =========================================================
+
+def resize_image(image, size):
+
+    if image is None:
+        return None
+
+    return pygame.transform.smoothscale(image, size)
+
+
+player_img = resize_image(player_img, (60, 60))
+enemy_normal_img = resize_image(enemy_normal_img, (50, 50))
+enemy_tank_img = resize_image(enemy_tank_img, (70, 70))
+boss_img = resize_image(boss_img, (140, 140))
+bullet_img = resize_image(bullet_img, (22, 22))
+hit_effect_img = resize_image(hit_effect_img, (60, 60))
+background_img = resize_image(background_img, (WIDTH, HEIGHT))
+
+
+# =========================================================
+# 플레이어
+# =========================================================
+
+player = {
+    "x": WIDTH // 2,
+    "y": HEIGHT // 2,
+
+    "width": 60,
+    "height": 60,
+
+    "hp": 100,
+    "max_hp": 100,
+
+    "atk": 10,
+
+    "attack_speed": 1.0,
+
+    "crit": 5,
+
+    "crit_damage": 150,
+
+    "move_speed": 4,
+
+    "cooldown": 0
 }
 
 
-/* =====================================================
-   Canvas
-===================================================== */
+# =========================================================
+# 게임 변수
+# =========================================================
 
-const canvas = document.getElementById("game");
+stage = 1
 
-const ctx = canvas.getContext("2d");
+pt = 0
 
-const WIDTH = canvas.width;
-const HEIGHT = canvas.height;
+kills = 0
 
+game_running = True
 
-/* =====================================================
-   키보드 / 마우스
-===================================================== */
+upgrade_screen = False
 
-const keys = {};
+result_screen = False
 
-const mouse = {
-    x: WIDTH / 2,
-    y: HEIGHT / 2,
-    down: false
-};
+stage_clear_processed = False
 
 
-document.addEventListener("keydown", e => {
+enemies = []
 
-    keys[e.key.toLowerCase()] = true;
+bullets = []
 
-});
+effects = []
 
 
-document.addEventListener("keyup", e => {
+# =========================================================
+# 적 생성
+# =========================================================
 
-    keys[e.key.toLowerCase()] = false;
+def spawn_stage():
 
-});
+    global enemies
+    global bullets
+    global effects
+    global stage_clear_processed
 
+    enemies = []
+    bullets = []
+    effects = []
 
-canvas.addEventListener("mousemove", e => {
+    stage_clear_processed = False
 
-    const rect = canvas.getBoundingClientRect();
+    # -----------------------------------------------------
+    # 6스테이지 보스
+    # -----------------------------------------------------
 
-    mouse.x =
-        (e.clientX - rect.left)
-        * WIDTH / rect.width;
+    if stage == 6:
 
-    mouse.y =
-        (e.clientY - rect.top)
-        * HEIGHT / rect.height;
+        enemies.append({
+            "type": "boss",
 
-});
+            "x": WIDTH // 2,
+            "y": 130,
 
+            "width": 140,
+            "height": 140,
 
-canvas.addEventListener("mousedown", () => {
+            "hp": 1500,
+            "max_hp": 1500,
 
-    mouse.down = true;
+            "speed": 0.8,
 
-});
+            "damage": 20,
 
+            "attack_cooldown": 0
+        })
 
-canvas.addEventListener("mouseup", () => {
+        return
 
-    mouse.down = false;
 
-});
+    # -----------------------------------------------------
+    # 일반 스테이지
+    # -----------------------------------------------------
 
+    enemy_count = 5 + stage * 3
 
-/* =====================================================
-   게임 변수
-===================================================== */
+    for _ in range(enemy_count):
 
-let stage = 1;
+        is_tank = random.random() < 0.25
 
-let pt = 0;
+        if is_tank:
 
-let kills = 0;
+            width = 70
+            height = 70
 
-let gameRunning = true;
+            hp = 70 + stage * 15
 
-let stageCleared = false;
+            speed = 0.6 + stage * 0.05
 
+            damage = 12 + stage * 2
 
-/* =====================================================
-   플레이어
-===================================================== */
+            enemy_type = "tank"
 
-const player = {
+        else:
 
-    x: WIDTH / 2,
-    y: HEIGHT / 2,
+            width = 50
+            height = 50
 
-    width: 55,
-    height: 55,
+            hp = 30 + stage * 10
 
-    hp: 100,
-    maxHp: 100,
+            speed = 1.0 + stage * 0.1
 
-    atk: 10,
+            damage = 5 + stage
 
-    attackSpeed: 1.0,
+            enemy_type = "normal"
 
-    crit: 5,
 
-    critDamage: 150,
+        enemies.append({
+            "type": enemy_type,
 
-    moveSpeed: 4,
+            "x": random.randint(70, WIDTH - 70),
+            "y": random.randint(100, HEIGHT - 70),
 
-    cooldown: 0
+            "width": width,
+            "height": height,
 
-};
+            "hp": hp,
+            "max_hp": hp,
 
+            "speed": speed,
 
-/* =====================================================
-   배열
-===================================================== */
+            "damage": damage,
 
-let enemies = [];
+            "attack_cooldown": 0
+        })
 
-let bullets = [];
 
-let effects = [];
+# =========================================================
+# 이미지 중앙 배치
+# =========================================================
 
+def draw_center(image, x, y):
 
-/* =====================================================
-   적 생성
-===================================================== */
+    if image is None:
+        return
 
-function spawnStage() {
+    rect = image.get_rect(center=(int(x), int(y)))
 
-    enemies = [];
+    screen.blit(image, rect)
 
-    bullets = [];
 
-    effects = [];
+# =========================================================
+# 플레이어 이동
+# =========================================================
 
-    stageCleared = false;
+def update_player():
 
-    if (stage === 6) {
+    keys = pygame.key.get_pressed()
 
-        spawnBoss();
+    dx = 0
+    dy = 0
 
-        return;
+    if keys[pygame.K_w]:
+        dy -= 1
 
-    }
+    if keys[pygame.K_s]:
+        dy += 1
 
+    if keys[pygame.K_a]:
+        dx -= 1
 
-    const enemyCount = 5 + stage * 3;
+    if keys[pygame.K_d]:
+        dx += 1
 
 
-    for (let i = 0; i < enemyCount; i++) {
+    if dx != 0 or dy != 0:
 
-        let tank = Math.random() < 0.25;
+        length = math.sqrt(dx * dx + dy * dy)
 
+        dx /= length
+        dy /= length
 
-        let enemy = {
+        player["x"] += dx * player["move_speed"]
+        player["y"] += dy * player["move_speed"]
 
-            type: tank ? "tank" : "normal",
 
-            x: Math.random() * (WIDTH - 100) + 50,
+    # 화면 밖으로 못 나가게
 
-            y: Math.random() * (HEIGHT - 100) + 50,
+    half_w = player["width"] // 2
+    half_h = player["height"] // 2
 
-            width: tank ? 65 : 45,
+    player["x"] = max(
+        half_w,
+        min(WIDTH - half_w, player["x"])
+    )
 
-            height: tank ? 65 : 45,
+    player["y"] = max(
+        half_h,
+        min(HEIGHT - half_h, player["y"])
+    )
 
-            hp:
-                tank
-                ? 70 + stage * 15
-                : 30 + stage * 10,
 
-            maxHp:
-                tank
-                ? 70 + stage * 15
-                : 30 + stage * 10,
+# =========================================================
+# 공격
+# =========================================================
 
-            speed:
-                tank
-                ? 0.6 + stage * 0.05
-                : 1.0 + stage * 0.1,
+def shoot():
 
-            damage:
-                tank
-                ? 12 + stage * 2
-                : 5 + stage,
+    if player["cooldown"] > 0:
+        return
 
-            attackCooldown: 0
 
-        };
+    mouse_x, mouse_y = pygame.mouse.get_pos()
 
 
-        enemies.push(enemy);
+    dx = mouse_x - player["x"]
+    dy = mouse_y - player["y"]
 
-    }
 
-}
+    distance = math.sqrt(dx * dx + dy * dy)
 
 
-/* =====================================================
-   보스
-===================================================== */
+    if distance == 0:
+        return
 
-function spawnBoss() {
 
-    enemies.push({
+    dx /= distance
+    dy /= distance
 
-        type: "boss",
 
-        x: WIDTH / 2,
+    # 치명타 판정
 
-        y: 130,
+    critical = random.random() * 100 < player["crit"]
 
-        width: 120,
 
-        height: 120,
+    damage = player["atk"]
 
-        hp: 1500,
 
-        maxHp: 1500,
+    if critical:
 
-        speed: 0.7,
+        damage *= player["crit_damage"] / 100
 
-        damage: 20,
 
-        attackCooldown: 0
+    bullets.append({
 
-    });
+        "x": player["x"],
+        "y": player["y"],
 
-}
+        "vx": dx * 10,
+        "vy": dy * 10,
 
+        "damage": damage,
 
-/* =====================================================
-   플레이어 이동
-===================================================== */
+        "critical": critical
+    })
 
-function updatePlayer() {
 
-    let dx = 0;
+    # 공격속도
+    # 값이 높을수록 공격 간격이 짧아짐
 
-    let dy = 0;
+    player["cooldown"] = 30 / player["attack_speed"]
 
 
-    if (keys["w"]) dy -= 1;
+# =========================================================
+# 총알 업데이트
+# =========================================================
 
-    if (keys["s"]) dy += 1;
+def update_bullets():
 
-    if (keys["a"]) dx -= 1;
+    for bullet in bullets[:]:
 
-    if (keys["d"]) dx += 1;
+        bullet["x"] += bullet["vx"]
+        bullet["y"] += bullet["vy"]
 
 
-    if (dx !== 0 || dy !== 0) {
-
-        const length =
-            Math.sqrt(dx * dx + dy * dy);
-
-        dx /= length;
-
-        dy /= length;
-
-
-        player.x +=
-            dx * player.moveSpeed;
-
-        player.y +=
-            dy * player.moveSpeed;
-
-    }
-
-
-    player.x =
-        Math.max(
-            player.width / 2,
-            Math.min(
-                WIDTH - player.width / 2,
-                player.x
-            )
-        );
-
-
-    player.y =
-        Math.max(
-            player.height / 2,
-            Math.min(
-                HEIGHT - player.height / 2,
-                player.y
-            )
-        );
-
-}
-
-
-/* =====================================================
-   공격
-===================================================== */
-
-function shoot() {
-
-    if (player.cooldown > 0) return;
-
-
-    let dx = mouse.x - player.x;
-
-    let dy = mouse.y - player.y;
-
-
-    const distance =
-        Math.sqrt(dx * dx + dy * dy);
-
-
-    if (distance === 0) return;
-
-
-    dx /= distance;
-
-    dy /= distance;
-
-
-    const critical =
-        Math.random() * 100 < player.crit;
-
-
-    let damage = player.atk;
-
-
-    if (critical) {
-
-        damage *=
-            player.critDamage / 100;
-
-    }
-
-
-    bullets.push({
-
-        x: player.x,
-
-        y: player.y,
-
-        vx: dx * 9,
-
-        vy: dy * 9,
-
-        damage: damage,
-
-        critical: critical,
-
-        width: 20,
-
-        height: 20
-
-    });
-
-
-    player.cooldown =
-        30 / player.attackSpeed;
-
-}
-
-
-/* =====================================================
-   총알 업데이트
-===================================================== */
-
-function updateBullets() {
-
-    for (
-        let i = bullets.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const bullet = bullets[i];
-
-
-        bullet.x += bullet.vx;
-
-        bullet.y += bullet.vy;
-
+        # 화면 밖
 
         if (
-            bullet.x < -30 ||
-            bullet.x > WIDTH + 30 ||
-            bullet.y < -30 ||
-            bullet.y > HEIGHT + 30
-        ) {
+            bullet["x"] < -30 or
+            bullet["x"] > WIDTH + 30 or
+            bullet["y"] < -30 or
+            bullet["y"] > HEIGHT + 30
+        ):
 
-            bullets.splice(i, 1);
+            bullets.remove(bullet)
 
-            continue;
-
-        }
+            continue
 
 
-        for (
-            let j = enemies.length - 1;
-            j >= 0;
-            j--
-        ) {
+        # 적과 충돌
 
-            const enemy = enemies[j];
+        for enemy in enemies[:]:
 
+            dx = bullet["x"] - enemy["x"]
+            dy = bullet["y"] - enemy["y"]
 
-            const dx =
-                bullet.x - enemy.x;
-
-            const dy =
-                bullet.y - enemy.y;
+            distance = math.sqrt(dx * dx + dy * dy)
 
 
-            const distance =
-                Math.sqrt(dx * dx + dy * dy);
+            if distance < enemy["width"] / 2 + 10:
+
+                enemy["hp"] -= bullet["damage"]
 
 
-            if (
-                distance <
-                enemy.width / 2 + 10
-            ) {
+                # 공격 효과
 
-                enemy.hp -= bullet.damage;
-
-
-                effects.push({
-
-                    x: enemy.x,
-
-                    y: enemy.y,
-
-                    timer: 10
-
-                });
+                effects.append({
+                    "x": enemy["x"],
+                    "y": enemy["y"],
+                    "timer": 12
+                })
 
 
-                bullets.splice(i, 1);
+                if bullet in bullets:
+                    bullets.remove(bullet)
 
 
-                if (enemy.hp <= 0) {
+                # 적 사망
 
-                    killEnemy(enemy, j);
+                if enemy["hp"] <= 0:
 
-                }
-
-
-                break;
-
-            }
-
-        }
-
-    }
-
-}
+                    kill_enemy(enemy)
 
 
-/* =====================================================
-   적 처치
-===================================================== */
-
-function killEnemy(enemy, index) {
-
-    let reward;
+                break
 
 
-    if (enemy.type === "boss") {
+# =========================================================
+# 적 처치
+# =========================================================
 
-        reward = 500;
+def kill_enemy(enemy):
 
-    }
-
-    else if (enemy.type === "tank") {
-
-        reward = 25 + stage * 3;
-
-    }
-
-    else {
-
-        reward = 10 + stage * 2;
-
-    }
+    global pt
+    global kills
 
 
-    pt += reward;
+    if enemy["type"] == "boss":
 
-    kills++;
+        reward = 500
 
+    elif enemy["type"] == "tank":
 
-    enemies.splice(index, 1);
+        reward = 25 + stage * 3
 
-}
+    else:
 
-
-/* =====================================================
-   적 AI
-===================================================== */
-
-function updateEnemies() {
-
-    for (const enemy of enemies) {
-
-        const dx =
-            player.x - enemy.x;
-
-        const dy =
-            player.y - enemy.y;
+        reward = 10 + stage * 2
 
 
-        const distance =
-            Math.sqrt(dx * dx + dy * dy);
+    pt += reward
+
+    kills += 1
 
 
-        if (
-            distance >
-            player.width / 2 +
-            enemy.width / 2
-        ) {
+    if enemy in enemies:
+        enemies.remove(enemy)
 
-            enemy.x +=
+
+# =========================================================
+# 적 AI
+# =========================================================
+
+def update_enemies():
+
+    global game_running
+
+
+    for enemy in enemies:
+
+        dx = player["x"] - enemy["x"]
+        dy = player["y"] - enemy["y"]
+
+
+        distance = math.sqrt(dx * dx + dy * dy)
+
+
+        if distance == 0:
+            continue
+
+
+        collision_distance = (
+            player["width"] / 2 +
+            enemy["width"] / 2
+        )
+
+
+        # 플레이어에게 이동
+
+        if distance > collision_distance:
+
+            enemy["x"] += (
                 dx / distance *
-                enemy.speed;
+                enemy["speed"]
+            )
 
-            enemy.y +=
+            enemy["y"] += (
                 dy / distance *
-                enemy.speed;
+                enemy["speed"]
+            )
 
-        }
 
-        else {
+        # 공격
 
-            if (enemy.attackCooldown <= 0) {
+        else:
 
-                player.hp -= enemy.damage;
+            if enemy["attack_cooldown"] <= 0:
 
-                enemy.attackCooldown = 60;
+                player["hp"] -= enemy["damage"]
 
-            }
+                enemy["attack_cooldown"] = 60
 
-        }
 
+        if enemy["attack_cooldown"] > 0:
 
-        if (enemy.attackCooldown > 0) {
+            enemy["attack_cooldown"] -= 1
 
-            enemy.attackCooldown--;
 
-        }
+    # 플레이어 사망
 
-    }
+    if player["hp"] <= 0:
 
+        player["hp"] = 0
 
-    if (player.hp <= 0) {
+        game_over()
 
-        player.hp = 0;
 
-        gameOver();
+# =========================================================
+# 업그레이드
+# =========================================================
 
-    }
+def upgrade_attack():
 
-}
+    global pt
 
+    cost = 50
 
-/* =====================================================
-   업그레이드
-===================================================== */
+    if pt >= cost:
 
-function upgrade(stat) {
+        pt -= cost
 
-    let cost = 0;
+        player["atk"] += 5
 
 
-    if (stat === "atk") {
+def upgrade_speed():
 
-        cost = 50;
+    global pt
 
+    cost = 70
 
-        if (pt >= cost) {
+    if pt >= cost:
 
-            pt -= cost;
+        pt -= cost
 
-            player.atk += 5;
+        player["attack_speed"] += 0.1
 
-        }
 
-    }
+def upgrade_crit():
 
+    global pt
 
-    if (stat === "attackSpeed") {
+    cost = 80
 
-        cost = 70;
+    if pt >= cost:
 
+        pt -= cost
 
-        if (pt >= cost) {
+        player["crit"] += 5
 
-            pt -= cost;
 
-            player.attackSpeed += 0.1;
+def upgrade_crit_damage():
 
-        }
+    global pt
 
-    }
+    cost = 100
 
+    if pt >= cost:
 
-    if (stat === "crit") {
+        pt -= cost
 
-        cost = 80;
+        player["crit_damage"] += 25
 
 
-        if (pt >= cost) {
+# =========================================================
+# 다음 스테이지
+# =========================================================
 
-            pt -= cost;
+def next_stage():
 
-            player.crit += 5;
+    global stage
+    global upgrade_screen
+    global game_running
 
-        }
 
-    }
+    stage += 1
 
 
-    if (stat === "critDamage") {
+    player["hp"] = player["max_hp"]
 
-        cost = 100;
 
+    upgrade_screen = False
 
-        if (pt >= cost) {
+    game_running = True
 
-            pt -= cost;
 
-            player.critDamage += 25;
+    spawn_stage()
 
-        }
 
-    }
+# =========================================================
+# 게임 오버
+# =========================================================
 
+def game_over():
 
-    updateUI();
+    global game_running
+    global result_screen
 
-}
 
+    game_running = False
 
-/* =====================================================
-   다음 스테이지
-===================================================== */
+    result_screen = True
 
-function nextStage() {
 
-    stage++;
+# =========================================================
+# 게임 클리어
+# =========================================================
 
+def victory():
 
-    player.hp = player.maxHp;
+    global game_running
+    global result_screen
 
 
-    gameRunning = true;
+    game_running = False
 
-    stageCleared = false;
+    result_screen = True
 
 
-    document.getElementById("upgrade")
-        .style.display = "none";
+# =========================================================
+# 스테이지 클리어 확인
+# =========================================================
 
+def check_stage_clear():
 
-    document.getElementById("stageText")
-        .textContent =
-        `STAGE ${stage}`;
+    global upgrade_screen
+    global game_running
+    global stage_clear_processed
 
 
-    spawnStage();
+    if len(enemies) != 0:
+        return
 
-}
 
+    if stage_clear_processed:
+        return
 
-/* =====================================================
-   스테이지 클리어
-===================================================== */
 
-function checkStageClear() {
+    stage_clear_processed = True
 
-    if (
-        enemies.length === 0 &&
-        !stageCleared
-    ) {
 
-        stageCleared = true;
+    # 6스테이지 클리어
 
+    if stage == 6:
 
-        if (stage === 6) {
+        victory()
 
-            victory();
+        return
 
-        }
 
-        else {
+    # 업그레이드 화면
 
-            gameRunning = false;
+    game_running = False
 
-            document.getElementById("upgrade")
-                .style.display = "flex";
+    upgrade_screen = True
 
-            document.getElementById("upgradePT")
-                .textContent = pt;
 
-        }
+# =========================================================
+# 버튼
+# =========================================================
 
-    }
+def draw_button(rect, text):
 
-}
+    pygame.draw.rect(
+        screen,
+        (55, 55, 65),
+        rect,
+        border_radius=8
+    )
 
+    pygame.draw.rect(
+        screen,
+        (130, 130, 140),
+        rect,
+        2,
+        border_radius=8
+    )
 
-/* =====================================================
-   게임 오버
-===================================================== */
 
-function gameOver() {
+    text_surface = font_small.render(
+        text,
+        True,
+        WHITE
+    )
 
-    gameRunning = false;
 
+    text_rect = text_surface.get_rect(
+        center=rect.center
+    )
 
-    document.getElementById("result")
-        .style.display = "flex";
 
+    screen.blit(
+        text_surface,
+        text_rect
+    )
 
-    document.getElementById("resultTitle")
-        .textContent =
-        "GAME OVER";
 
+# =========================================================
+# 게임 화면
+# =========================================================
 
-    document.getElementById("resultText")
-        .innerHTML =
-        `
-        최종 PT: ${pt}<br>
-        처치한 적: ${kills}<br>
-        도달 스테이지: ${stage}
-        `;
+def draw_game():
 
-}
+    # 배경
 
+    if background_img is not None:
 
-/* =====================================================
-   게임 클리어
-===================================================== */
+        screen.blit(
+            background_img,
+            (0, 0)
+        )
 
-function victory() {
+    else:
 
-    gameRunning = false;
+        screen.fill((15, 15, 25))
 
 
-    document.getElementById("result")
-        .style.display = "flex";
+    # 총알
 
+    for bullet in bullets:
 
-    document.getElementById("resultTitle")
-        .textContent =
-        "🏆 ALL STAGES CLEAR!";
+        if bullet_img is not None:
 
+            draw_center(
+                bullet_img,
+                bullet["x"],
+                bullet["y"]
+            )
 
-    document.getElementById("resultText")
-        .innerHTML =
-        `
-        최종 점수: <strong>${pt} PT</strong><br>
-        총 처치 수: ${kills}<br><br>
+        else:
 
-        공격력: ${player.atk}<br>
-        공격속도: ${player.attackSpeed.toFixed(1)}<br>
-        치명타 확률: ${player.crit}%<br>
-        치명타 피해: ${player.critDamage}%
-        `;
+            pygame.draw.circle(
+                screen,
+                YELLOW if bullet["critical"] else WHITE,
+                (
+                    int(bullet["x"]),
+                    int(bullet["y"])
+                ),
+                5
+            )
 
-}
 
+    # 적
 
-/* =====================================================
-   UI
-===================================================== */
+    for enemy in enemies:
 
-function updateUI() {
+        if enemy["type"] == "boss":
 
-    document.getElementById("hp")
-        .textContent =
-        Math.ceil(player.hp);
+            image = boss_img
 
+        elif enemy["type"] == "tank":
 
-    document.getElementById("atk")
-        .textContent =
-        player.atk;
+            image = enemy_tank_img
 
+        else:
 
-    document.getElementById("attackSpeed")
-        .textContent =
-        player.attackSpeed.toFixed(1);
+            image = enemy_normal_img
 
 
-    document.getElementById("crit")
-        .textContent =
-        player.crit;
+        if image is not None:
 
+            draw_center(
+                image,
+                enemy["x"],
+                enemy["y"]
+            )
 
-    document.getElementById("critDamage")
-        .textContent =
-        player.critDamage;
+        else:
 
+            color = (
+                PURPLE
+                if enemy["type"] == "boss"
+                else RED
+            )
 
-    document.getElementById("pt")
-        .textContent =
-        pt;
+            pygame.draw.circle(
+                screen,
+                color,
+                (
+                    int(enemy["x"]),
+                    int(enemy["y"])
+                ),
+                enemy["width"] // 2
+            )
 
 
-    document.getElementById("enemyCount")
-        .textContent =
-        enemies.length;
+        # HP 바
 
+        bar_width = enemy["width"]
 
-    document.getElementById("upgradePT")
-        .textContent =
-        pt;
+        bar_x = enemy["x"] - bar_width / 2
 
-}
+        bar_y = (
+            enemy["y"]
+            - enemy["height"] / 2
+            - 10
+        )
 
 
-/* =====================================================
-   이미지 그리기
-===================================================== */
+        pygame.draw.rect(
+            screen,
+            (40, 40, 40),
+            (
+                bar_x,
+                bar_y,
+                bar_width,
+                6
+            )
+        )
 
-function drawImageCentered(
-    image,
-    x,
-    y,
-    width,
-    height
-) {
 
-    if (!image.complete) return;
-
-
-    ctx.drawImage(
-        image,
-        x - width / 2,
-        y - height / 2,
-        width,
-        height
-    );
-
-}
-
-
-/* =====================================================
-   렌더링
-===================================================== */
-
-function draw() {
-
-    ctx.clearRect(
-        0,
-        0,
-        WIDTH,
-        HEIGHT
-    );
-
-
-    /* 배경 */
-
-    if (images.background.complete) {
-
-        ctx.drawImage(
-            images.background,
+        hp_ratio = max(
             0,
-            0,
-            WIDTH,
-            HEIGHT
-        );
-
-    }
-
-    else {
-
-        ctx.fillStyle = "#222";
-
-        ctx.fillRect(
-            0,
-            0,
-            WIDTH,
-            HEIGHT
-        );
-
-    }
+            enemy["hp"] / enemy["max_hp"]
+        )
 
 
-    /* 총알 */
-
-    for (const bullet of bullets) {
-
-        if (images.bullet.complete) {
-
-            const angle =
-                Math.atan2(
-                    bullet.vy,
-                    bullet.vx
-                );
-
-
-            ctx.save();
+        pygame.draw.rect(
+            screen,
+            GREEN,
+            (
+                bar_x,
+                bar_y,
+                bar_width * hp_ratio,
+                6
+            )
+        )
 
 
-            ctx.translate(
-                bullet.x,
-                bullet.y
-            );
+    # 공격 효과
+
+    for effect in effects:
+
+        if hit_effect_img is not None:
+
+            alpha = int(
+                255 *
+                effect["timer"] / 12
+            )
+
+            temp = hit_effect_img.copy()
+
+            temp.set_alpha(alpha)
+
+            rect = temp.get_rect(
+                center=(
+                    int(effect["x"]),
+                    int(effect["y"])
+                )
+            )
+
+            screen.blit(temp, rect)
 
 
-            ctx.rotate(angle);
+    # 플레이어
 
+    if player_img is not None:
 
-            ctx.drawImage(
-                images.bullet,
-                -bullet.width / 2,
-                -bullet.height / 2,
-                bullet.width,
-                bullet.height
-            );
+        draw_center(
+            player_img,
+            player["x"],
+            player["y"]
+        )
 
+    else:
 
-            ctx.restore();
-
-        }
-
-    }
-
-
-    /* 적 */
-
-    for (const enemy of enemies) {
-
-        let image;
-
-
-        if (enemy.type === "boss") {
-
-            image = images.boss;
-
-        }
-
-        else if (enemy.type === "tank") {
-
-            image = images.enemyTank;
-
-        }
-
-        else {
-
-            image = images.enemyNormal;
-
-        }
-
-
-        drawImageCentered(
-            image,
-            enemy.x,
-            enemy.y,
-            enemy.width,
-            enemy.height
-        );
-
-
-        /* HP바 */
-
-        const barWidth =
-            enemy.width;
-
-
-        ctx.fillStyle = "#333";
-
-
-        ctx.fillRect(
-            enemy.x - barWidth / 2,
-            enemy.y - enemy.height / 2 - 10,
-            barWidth,
-            6
-        );
-
-
-        ctx.fillStyle = "#32d15b";
-
-
-        ctx.fillRect(
-            enemy.x - barWidth / 2,
-            enemy.y - enemy.height / 2 - 10,
-            barWidth *
-            Math.max(
-                0,
-                enemy.hp / enemy.maxHp
+        pygame.draw.circle(
+            screen,
+            BLUE,
+            (
+                int(player["x"]),
+                int(player["y"])
             ),
-            6
-        );
+            25
+        )
 
-    }
 
+    # UI
 
-    /* 플레이어 */
+    draw_ui()
 
-    drawImageCentered(
-        images.player,
-        player.x,
-        player.y,
-        player.width,
-        player.height
-    );
 
+# =========================================================
+# UI
+# =========================================================
 
-    /* 공격 효과 */
+def draw_ui():
 
-    for (
-        let i = effects.length - 1;
-        i >= 0;
-        i--
-    ) {
+    texts = [
 
-        const effect = effects[i];
+        f"HP: {int(player['hp'])} / {player['max_hp']}",
 
+        f"ATK: {player['atk']}",
 
-        if (images.hitEffect.complete) {
+        f"공격속도: {player['attack_speed']:.1f}",
 
-            ctx.globalAlpha =
-                effect.timer / 10;
+        f"치명타 확률: {player['crit']}%",
 
+        f"치명타 피해: {player['crit_damage']}%",
 
-            ctx.drawImage(
-                images.hitEffect,
-                effect.x - 25,
-                effect.y - 25,
-                50,
-                50
-            );
+        f"PT: {pt}",
 
+        f"남은 적: {len(enemies)}"
+    ]
 
-            ctx.globalAlpha = 1;
 
-        }
+    y = 10
 
 
-        effect.timer--;
+    for text in texts:
 
+        surface = font_small.render(
+            text,
+            True,
+            WHITE
+        )
 
-        if (effect.timer <= 0) {
+        screen.blit(
+            surface,
+            (10, y)
+        )
 
-            effects.splice(i, 1);
+        y += 25
 
-        }
 
-    }
+    # 스테이지
 
-}
+    stage_surface = font.render(
+        f"STAGE {stage} / 6",
+        True,
+        WHITE
+    )
 
 
-/* =====================================================
-   게임 업데이트
-===================================================== */
+    stage_rect = stage_surface.get_rect(
+        center=(WIDTH // 2, 30)
+    )
 
-function update() {
 
-    if (!gameRunning) return;
+    screen.blit(
+        stage_surface,
+        stage_rect
+    )
 
 
-    updatePlayer();
+# =========================================================
+# 업그레이드 화면
+# =========================================================
 
+def draw_upgrade():
 
-    if (mouse.down) {
+    screen.fill((12, 12, 20))
 
-        shoot();
 
-    }
+    title = font_huge.render(
+        "STAGE CLEAR!",
+        True,
+        WHITE
+    )
 
 
-    if (player.cooldown > 0) {
+    title_rect = title.get_rect(
+        center=(WIDTH // 2, 100)
+    )
 
-        player.cooldown--;
 
-    }
+    screen.blit(title, title_rect)
 
 
-    updateBullets();
+    pt_text = font.render(
+        f"현재 PT: {pt}",
+        True,
+        YELLOW
+    )
 
-    updateEnemies();
 
-    checkStageClear();
+    pt_rect = pt_text.get_rect(
+        center=(WIDTH // 2, 160)
+    )
 
-    updateUI();
 
-}
+    screen.blit(pt_text, pt_rect)
 
 
-/* =====================================================
-   게임 루프
-===================================================== */
-
-function gameLoop() {
-
-    update();
-
-    draw();
-
-    requestAnimationFrame(gameLoop);
-
-}
-
-
-/* =====================================================
-   시작
-===================================================== */
-
-spawnStage();
-
-updateUI();
-
-gameLoop();
-
-</script>
-
-</body>
-</html>#message {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    background: rgba(0,0,0,0.75);
-    z-index: 20;
-}
-
-#message h1 {
-    font-size: 48px;
-    margin: 10px;
-}
-
-button {
-    padding: 12px 20px;
-    margin: 5px;
-    border: none;
-    border-radius: 8px;
-    background: #444;
-    color: white;
-    cursor: pointer;
-    font-size: 16px;
-}
-
-button:hover {
-    background: #666;
-}
-
-.upgrade {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    background: rgba(0,0,0,0.8);
-    z-index: 15;
-}
-
-.upgrade h2 {
-    font-size: 36px;
-}
-
-.upgrade button {
-    width: 260px;
-}
-</style>
-</head>
-
-<body>
+    buttons = [
 
-<canvas id="game" width="1000" height="650"></canvas>
+        (
+            pygame.Rect(
+                WIDTH // 2 - 160,
+                220,
+                320,
+                55
+            ),
+            "공격력 +5     50 PT"
+        ),
 
-<div id="ui">
-    <div>❤️ HP: <span id="hp">100</span></div>
-    <div>⚔️ ATK: <span id="atk">10</span></div>
-    <div>⚡ 공격속도: <span id="speed">1.0</span></div>
-    <div>🎯 치명타: <span id="crit">5</span>%</div>
-    <div>💥 치명타 피해: <span id="critDmg">150</span>%</div>
-    <div>💰 PT: <span id="pt">0</span></div>
-    <div>🏆 Stage: <span id="stage">1</span> / 6</div>
-    <div>👾 남은 적: <span id="enemyCount">0</span></div>
-</div>
+        (
+            pygame.Rect(
+                WIDTH // 2 - 160,
+                290,
+                320,
+                55
+            ),
+            "공격속도 +10%     70 PT"
+        ),
 
-<div id="upgrade" class="upgrade">
-    <h2>STAGE CLEAR!</h2>
-    <p>획득한 PT를 사용해서 능력을 강화하세요.</p>
+        (
+            pygame.Rect(
+                WIDTH // 2 - 160,
+                360,
+                320,
+                55
+            ),
+            "치명타 확률 +5%     80 PT"
+        ),
 
-    <button onclick="upgradeStat('atk')">
-        공격력 +5 — 50 PT
-    </button>
+        (
+            pygame.Rect(
+                WIDTH // 2 - 160,
+                430,
+                320,
+                55
+            ),
+            "치명타 피해 +25%     100 PT"
+        ),
 
-    <button onclick="upgradeStat('speed')">
-        공격속도 +10% — 70 PT
-    </button>
+        (
+            pygame.Rect(
+                WIDTH // 2 - 160,
+                510,
+                320,
+                55
+            ),
+            "다음 스테이지"
+        )
+    ]
 
-    <button onclick="upgradeStat('crit')">
-        치명타 확률 +5% — 80 PT
-    </button>
 
-    <button onclick="upgradeStat('critDmg')">
-        치명타 피해 +25% — 100 PT
-    </button>
+    for rect, text in buttons:
 
-    <button onclick="nextStage()">
-        다음 스테이지 →
-    </button>
-</div>
+        draw_button(
+            rect,
+            text
+        )
 
-<div id="message">
-    <h1 id="messageTitle"></h1>
-    <p id="messageText"></p>
-    <button onclick="location.reload()">다시 시작</button>
-</div>
 
-<script>
+# =========================================================
+# 결과 화면
+# =========================================================
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+def draw_result():
 
-const W = canvas.width;
-const H = canvas.height;
+    screen.fill((8, 8, 15))
 
-const keys = {};
 
-let mouse = {
-    x: W / 2,
-    y: H / 2,
-    down: false
-};
+    if stage == 6 and len(enemies) == 0:
 
-document.addEventListener("keydown", e => {
-    keys[e.key.toLowerCase()] = true;
-});
+        title_text = "ALL STAGES CLEAR!"
 
-document.addEventListener("keyup", e => {
-    keys[e.key.toLowerCase()] = false;
-});
+        title_color = YELLOW
 
-canvas.addEventListener("mousemove", e => {
-    const rect = canvas.getBoundingClientRect();
+    else:
 
-    mouse.x = (e.clientX - rect.left) * W / rect.width;
-    mouse.y = (e.clientY - rect.top) * H / rect.height;
-});
+        title_text = "GAME OVER"
 
-canvas.addEventListener("mousedown", () => {
-    mouse.down = true;
-});
+        title_color = RED
 
-canvas.addEventListener("mouseup", () => {
-    mouse.down = false;
-});
 
+    title = font_huge.render(
+        title_text,
+        True,
+        title_color
+    )
 
-/* =========================
-   게임 데이터
-========================= */
 
-let gameRunning = true;
-let stage = 1;
-let pt = 0;
+    title_rect = title.get_rect(
+        center=(WIDTH // 2, 120)
+    )
 
-let player = {
-    x: W / 2,
-    y: H / 2,
 
-    radius: 18,
+    screen.blit(
+        title,
+        title_rect
+    )
 
-    hp: 100,
-    maxHp: 100,
 
-    atk: 10,
+    results = [
 
-    attackSpeed: 1.0,
-    attackCooldown: 0,
+        f"최종 점수: {pt} PT",
 
-    crit: 5,
-    critDmg: 150,
+        f"총 처치 수: {kills}",
 
-    moveSpeed: 4
-};
+        f"도달 스테이지: {stage}",
 
-let enemies = [];
-let bullets = [];
+        "",
 
-let kills = 0;
+        f"공격력: {player['atk']}",
 
+        f"공격속도: {player['attack_speed']:.1f}",
 
-/* =========================
-   스테이지
-========================= */
+        f"치명타 확률: {player['crit']}%",
 
-function spawnStage() {
+        f"치명타 피해: {player['crit_damage']}%"
+    ]
 
-    enemies = [];
-    bullets = [];
 
-    let count;
+    y = 210
 
-    if (stage === 6) {
-        // 보스
-        enemies.push({
-            x: W / 2,
-            y: 100,
 
-            radius: 55,
+    for text in results:
 
-            hp: 1500,
-            maxHp: 1500,
+        surface = font.render(
+            text,
+            True,
+            WHITE
+        )
 
-            speed: 1.2,
 
-            damage: 15,
+        rect = surface.get_rect(
+            center=(WIDTH // 2, y)
+        )
 
-            boss: true
-        });
 
-        count = 0;
+        screen.blit(
+            surface,
+            rect
+        )
 
-    } else {
 
-        count = 5 + stage * 3;
+        y += 42
 
-        for (let i = 0; i < count; i++) {
 
-            let type = Math.random();
+    restart_button = pygame.Rect(
+        WIDTH // 2 - 120,
+        550,
+        240,
+        55
+    )
 
-            let enemy;
 
-            if (type < 0.7) {
+    draw_button(
+        restart_button,
+        "다시 시작"
+    )
 
-                enemy = {
-                    x: Math.random() * (W - 100) + 50,
-                    y: Math.random() * (H - 100) + 50,
 
-                    radius: 15,
+# =========================================================
+# 효과 업데이트
+# =========================================================
 
-                    hp: 30 + stage * 10,
-                    maxHp: 30 + stage * 10,
+def update_effects():
 
-                    speed: 1 + stage * 0.1,
+    for effect in effects[:]:
 
-                    damage: 5 + stage,
+        effect["timer"] -= 1
 
-                    boss: false
-                };
 
-            } else {
+        if effect["timer"] <= 0:
 
-                enemy = {
-                    x: Math.random() * (W - 100) + 50,
-                    y: Math.random() * (H - 100) + 50,
+            effects.remove(effect)
 
-                    radius: 22,
 
-                    hp: 70 + stage * 15,
-                    maxHp: 70 + stage * 15,
+# =========================================================
+# 마우스 클릭 처리
+# =========================================================
 
-                    speed: 0.6 + stage * 0.08,
+def handle_mouse_click(pos):
 
-                    damage: 10 + stage * 2,
+    global upgrade_screen
 
-                    boss: false
-                };
 
-            }
+    # 업그레이드 화면
 
-            enemies.push(enemy);
-        }
-    }
+    if upgrade_screen:
 
-    updateUI();
-}
+        buttons = [
 
+            (
+                pygame.Rect(
+                    WIDTH // 2 - 160,
+                    220,
+                    320,
+                    55
+                ),
+                upgrade_attack
+            ),
 
-/* =========================
-   플레이어 이동
-========================= */
+            (
+                pygame.Rect(
+                    WIDTH // 2 - 160,
+                    290,
+                    320,
+                    55
+                ),
+                upgrade_speed
+            ),
 
-function updatePlayer() {
+            (
+                pygame.Rect(
+                    WIDTH // 2 - 160,
+                    360,
+                    320,
+                    55
+                ),
+                upgrade_crit
+            ),
 
-    let dx = 0;
-    let dy = 0;
+            (
+                pygame.Rect(
+                    WIDTH // 2 - 160,
+                    430,
+                    320,
+                    55
+                ),
+                upgrade_crit_damage
+            ),
 
-    if (keys["w"]) dy--;
-    if (keys["s"]) dy++;
-    if (keys["a"]) dx--;
-    if (keys["d"]) dx++;
+            (
+                pygame.Rect(
+                    WIDTH // 2 - 160,
+                    510,
+                    320,
+                    55
+                ),
+                next_stage
+            )
+        ]
 
-    if (dx !== 0 || dy !== 0) {
 
-        let length = Math.sqrt(dx * dx + dy * dy);
+        for rect, function in buttons:
 
-        dx /= length;
-        dy /= length;
+            if rect.collidepoint(pos):
 
-        player.x += dx * player.moveSpeed;
-        player.y += dy * player.moveSpeed;
-    }
+                function()
 
-    player.x = Math.max(player.radius, Math.min(W - player.radius, player.x));
-    player.y = Math.max(player.radius, Math.min(H - player.radius, player.y));
-}
+                return
 
 
-/* =========================
-   공격
-========================= */
+    # 결과 화면
 
-function shoot() {
+    if result_screen:
 
-    if (player.attackCooldown > 0) return;
+        restart_button = pygame.Rect(
+            WIDTH // 2 - 120,
+            550,
+            240,
+            55
+        )
 
-    let dx = mouse.x - player.x;
-    let dy = mouse.y - player.y;
 
-    let length = Math.sqrt(dx * dx + dy * dy);
+        if restart_button.collidepoint(pos):
 
-    dx /= length;
-    dy /= length;
+            pygame.quit()
 
-    let critical = Math.random() * 100 < player.crit;
+            # 같은 프로그램 다시 실행
 
-    let damage = player.atk;
+            import os
 
-    if (critical) {
-        damage *= player.critDmg / 100;
-    }
+            os.execl(
+                sys.executable,
+                sys.executable,
+                *sys.argv
+            )
 
-    bullets.push({
 
-        x: player.x,
-        y: player.y,
+# =========================================================
+# 메인 루프
+# =========================================================
 
-        vx: dx * 9,
-        vy: dy * 9,
+spawn_stage()
 
-        damage: damage,
 
-        critical: critical,
+running = True
 
-        radius: 5
-    });
 
-    player.attackCooldown = 30 / player.attackSpeed;
-}
+while running:
 
+    clock.tick(FPS)
 
-/* =========================
-   총알
-========================= */
 
-function updateBullets() {
+    # -----------------------------------------------------
+    # 이벤트
+    # -----------------------------------------------------
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
+    for event in pygame.event.get():
 
-        let b = bullets[i];
+        if event.type == pygame.QUIT:
 
-        b.x += b.vx;
-        b.y += b.vy;
+            running = False
 
-        if (
-            b.x < 0 ||
-            b.x > W ||
-            b.y < 0 ||
-            b.y > H
-        ) {
-            bullets.splice(i, 1);
-            continue;
-        }
 
-        for (let j = enemies.length - 1; j >= 0; j--) {
+        if event.type == pygame.MOUSEBUTTONDOWN:
 
-            let e = enemies[j];
+            if event.button == 1:
 
-            let dx = b.x - e.x;
-            let dy = b.y - e.y;
+                handle_mouse_click(
+                    event.pos
+                )
 
-            let dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < b.radius + e.radius) {
+        # ESC = 종료
 
-                e.hp -= b.damage;
+        if event.type == pygame.KEYDOWN:
 
-                bullets.splice(i, 1);
+            if event.key == pygame.K_ESCAPE:
 
-                if (e.hp <= 0) {
+                running = False
 
-                    let reward = e.boss ? 500 : 10 + stage * 2;
 
-                    pt += reward;
+    # -----------------------------------------------------
+    # 게임 플레이
+    # -----------------------------------------------------
 
-                    kills++;
+    if game_running:
 
-                    enemies.splice(j, 1);
-                }
+        update_player()
 
-                break;
-            }
-        }
-    }
-}
 
+        # 마우스 누르고 있으면 자동 공격
 
-/* =========================
-   적 AI
-========================= */
+        if pygame.mouse.get_pressed()[0]:
 
-function updateEnemies() {
+            shoot()
 
-    for (let e of enemies) {
 
-        let dx = player.x - e.x;
-        let dy = player.y - e.y;
+        if player["cooldown"] > 0:
 
-        let dist = Math.sqrt(dx * dx + dy * dy);
+            player["cooldown"] -= 1
 
-        if (dist > player.radius + e.radius) {
 
-            e.x += dx / dist * e.speed;
-            e.y += dy / dist * e.speed;
+        update_bullets()
 
-        } else {
+        update_enemies()
 
-            player.hp -= e.damage * 0.02;
+        update_effects()
 
-            if (player.hp <= 0) {
+        check_stage_clear()
 
-                player.hp = 0;
 
-                gameOver();
-            }
-        }
-    }
-}
+    # -----------------------------------------------------
+    # 화면
+    # -----------------------------------------------------
 
+    if result_screen:
 
-/* =========================
-   게임 업데이트
-========================= */
+        draw_result()
 
-function update() {
+    elif upgrade_screen:
 
-    if (!gameRunning) return;
+        draw_upgrade()
 
-    updatePlayer();
+    else:
 
-    if (mouse.down) {
-        shoot();
-    }
+        draw_game()
 
-    if (player.attackCooldown > 0) {
-        player.attackCooldown--;
-    }
 
-    updateBullets();
-    updateEnemies();
+    pygame.display.flip()
 
-    if (enemies.length === 0) {
-        stageClear();
-    }
 
-    updateUI();
-}
+pygame.quit()
 
-
-/* =========================
-   스테이지 클리어
-========================= */
-
-let stageCleared = false;
-
-function stageClear() {
-
-    if (stageCleared) return;
-
-    stageCleared = true;
-
-    gameRunning = false;
-
-    if (stage >= 6) {
-
-        victory();
-
-    } else {
-
-        document.getElementById("upgrade").style.display = "flex";
-    }
-}
-
-
-function nextStage() {
-
-    stage++;
-
-    stageCleared = false;
-
-    gameRunning = true;
-
-    player.hp = player.maxHp;
-
-    document.getElementById("upgrade").style.display = "none";
-
-    spawnStage();
-}
-
-
-/* =========================
-   업그레이드
-========================= */
-
-function upgradeStat(stat) {
-
-    let cost = 0;
-
-    if (stat === "atk") {
-
-        cost = 50;
-
-        if (pt >= cost) {
-            pt -= cost;
-            player.atk += 5;
-        }
-
-    }
-
-    else if (stat === "speed") {
-
-        cost = 70;
-
-        if (pt >= cost) {
-            pt -= cost;
-            player.attackSpeed += 0.1;
-        }
-
-    }
-
-    else if (stat === "crit") {
-
-        cost = 80;
-
-        if (pt >= cost) {
-            pt -= cost;
-            player.crit += 5;
-        }
-
-    }
-
-    else if (stat === "critDmg") {
-
-        cost = 100;
-
-        if (pt >= cost) {
-            pt -= cost;
-            player.critDmg += 25;
-        }
-    }
-
-    updateUI();
-}
-
-
-/* =========================
-   UI
-========================= */
-
-function updateUI() {
-
-    document.getElementById("hp").textContent =
-        Math.ceil(player.hp);
-
-    document.getElementById("atk").textContent =
-        player.atk;
-
-    document.getElementById("speed").textContent =
-        player.attackSpeed.toFixed(1);
-
-    document.getElementById("crit").textContent =
-        player.crit;
-
-    document.getElementById("critDmg").textContent =
-        player.critDmg;
-
-    document.getElementById("pt").textContent =
-        pt;
-
-    document.getElementById("stage").textContent =
-        stage;
-
-    document.getElementById("enemyCount").textContent =
-        enemies.length;
-}
-
-
-/* =========================
-   게임 오버
-========================= */
-
-function gameOver() {
-
-    gameRunning = false;
-
-    document.getElementById("message").style.display = "flex";
-
-    document.getElementById("messageTitle").textContent =
-        "GAME OVER";
-
-    document.getElementById("messageText").innerHTML =
-        `획득 PT: ${pt}<br>처치한 적: ${kills}`;
-}
-
-
-/* =========================
-   게임 클리어
-========================= */
-
-function victory() {
-
-    gameRunning = false;
-
-    document.getElementById("message").style.display = "flex";
-
-    document.getElementById("messageTitle").textContent =
-        "🏆 ALL STAGES CLEAR!";
-
-    document.getElementById("messageText").innerHTML =
-        `
-        최종 점수: <strong>${pt} PT</strong><br>
-        처치한 적: ${kills}<br><br>
-
-        최종 능력치<br>
-        공격력: ${player.atk}<br>
-        공격속도: ${player.attackSpeed.toFixed(1)}<br>
-        치명타 확률: ${player.crit}%<br>
-        치명타 피해: ${player.critDmg}%
-        `;
-}
-
-
-/* =========================
-   렌더링
-========================= */
-
-function draw() {
-
-    ctx.clearRect(0, 0, W, H);
-
-    // 배경
-    ctx.fillStyle = "#181818";
-    ctx.fillRect(0, 0, W, H);
-
-
-    // 플레이어
-    ctx.beginPath();
-
-    ctx.arc(
-        player.x,
-        player.y,
-        player.radius,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fillStyle = "#4da6ff";
-    ctx.fill();
-
-
-    // 총알
-    for (let b of bullets) {
-
-        ctx.beginPath();
-
-        ctx.arc(
-            b.x,
-            b.y,
-            b.radius,
-            0,
-            Math.PI * 2
-        );
-
-        ctx.fillStyle =
-            b.critical ? "#ffff00" : "#ffffff";
-
-        ctx.fill();
-    }
-
-
-    // 적
-    for (let e of enemies) {
-
-        ctx.beginPath();
-
-        ctx.arc(
-            e.x,
-            e.y,
-            e.radius,
-            0,
-            Math.PI * 2
-        );
-
-        ctx.fillStyle =
-            e.boss ? "#9b35ff" : "#e74c3c";
-
-        ctx.fill();
-
-
-        // HP bar
-        let barWidth = e.radius * 2;
-
-        ctx.fillStyle = "#333";
-
-        ctx.fillRect(
-            e.x - barWidth / 2,
-            e.y - e.radius - 10,
-            barWidth,
-            5
-        );
-
-        ctx.fillStyle = "#2ecc71";
-
-        ctx.fillRect(
-            e.x - barWidth / 2,
-            e.y - e.radius - 10,
-            barWidth * (e.hp / e.maxHp),
-            5
-        );
-    }
-
-
-    // 스테이지 표시
-    ctx.fillStyle = "white";
-
-    ctx.font = "24px Arial";
-
-    ctx.textAlign = "center";
-
-    ctx.fillText(
-        `STAGE ${stage}`,
-        W / 2,
-        35
-    );
-}
-
-
-/* =========================
-   게임 루프
-========================= */
-
-function loop() {
-
-    update();
-
-    draw();
-
-    requestAnimationFrame(loop);
-}
-
-
-spawnStage();
-
-loop();
-
-</script>
-
-</body>
-</html>
+sys.exit()
+```
