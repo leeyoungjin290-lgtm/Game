@@ -880,7 +880,51 @@ function bossShoot(boss) {
 // =========================================================
 // 총알 발사
 // =========================================================
+import pygame
 
+# Pygame 및 믹서 초기화 (코드 시작 부분에 1번만 실행)
+pygame.init()
+pygame.mixer.init()
+
+# 효과음 로드
+gunshot_sound = pygame.mixer.Sound("gunshot.wav")  # 또는 gunshot.mp3
+
+
+def shoot():
+    dx = mouseX - player["x"]
+    dy = mouseY - player["y"]
+
+    distance = (dx**2 + dy**2) ** 0.5
+
+    if distance <= 0:
+        return
+
+    vx = (dx / distance) * player["bulletSpeed"]
+    vy = (dy / distance) * player["bulletSpeed"]
+
+    damage = player["attack"]
+    critical = False
+
+    import random
+
+    if random.random() < player["critChance"]:
+        damage *= player["critDamage"]
+        critical = True
+
+    bullets.append(
+        {
+            "x": player["x"],
+            "y": player["y"],
+            "vx": vx,
+            "vy": vy,
+            "damage": damage,
+            "critical": critical,
+            "size": 20,
+        }
+    )
+
+    # 총소리 재생
+    gunshot_sound.play()
 // ==========================================
 // 총소리 오디오
 // ==========================================
