@@ -1396,7 +1396,7 @@ function bossShoot(boss) {
     const randomOffset =
         (Math.random() - 0.5)
         * Math.PI
-        / 2;
+    
 
 
     angle +=
