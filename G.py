@@ -3,6 +3,16 @@ import streamlit.components.v1 as components
 import base64
 import os
 
+import streamlit as st
+
+st.title("🎵 우주 슈팅 게임 BGM 플레이어")
+
+# 노래 파일 경로 지정 (같은 폴더 내에 song.mp3 파일이 있는 경우)
+audio_file = open('song.mp3', 'rb')
+audio_bytes = audio_file.read()
+
+# 오디오 플레이어 출력
+st.audio(audio_bytes, format='audio/mp3')
 
 # =========================================================
 # Streamlit 설정
