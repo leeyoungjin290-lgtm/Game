@@ -880,7 +880,7 @@ let player = {
 
     critDamage: 2,
 
-    bulletSpeed: 700,
+    bulletSpeed: 1000,
 
     invincible: 0
 
@@ -1421,11 +1421,11 @@ function bossShoot(boss) {
             Math.sin(angle)
             * 250,
 
-        width: 24,
+        width: 9,
 
-        height: 24,
+        height: 9,
 
-        radius: 11,
+        radius: 5,
 
         damage: 18,
 
