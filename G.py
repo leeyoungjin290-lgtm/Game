@@ -827,7 +827,7 @@ let attackTimer = 0;
 // 보스 공격
 // ========================================================
 
-let bossAttackTimer = 0.5;
+let bossAttackTimer = 2;
 
 let bossAttackSpeed = 500;
 
