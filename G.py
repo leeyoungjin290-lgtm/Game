@@ -881,64 +881,65 @@ function bossShoot(boss) {
 // 총알 발사
 // =========================================================
 
-// 코드 시작 전 전역 변수로 sound 파일 하나 등록
-const gunshotAudio = new Audio('gunshot.mp3');
+// ==========================================
+// 총소리 오디오
+// ==========================================
+const gunshotAudio = new Audio("./gunshot.mp3");
 
+// 음량 설정
+gunshotAudio.volume = 0.7;
+
+
+// ==========================================
+// 총 쏘기
+// ==========================================
 function shoot() {
 
-    const dx =
-        mouseX - player.x;
+    const dx = mouseX - player.x;
+    const dy = mouseY - player.y;
 
-    const dy =
-        mouseY - player.y;
-
-    const distance =
-        Math.sqrt(
-            dx * dx +
-            dy * dy
-        );
+    const distance = Math.sqrt(
+        dx * dx +
+        dy * dy
+    );
 
     if (distance <= 0) {
         return;
     }
 
 
+    // 총알 속도
     const vx =
-        dx / distance
-        * player.bulletSpeed;
+        (dx / distance) *
+        player.bulletSpeed;
 
     const vy =
-        dy / distance
-        * player.bulletSpeed;
+        (dy / distance) *
+        player.bulletSpeed;
 
 
-    let damage =
-        player.attack;
+    // 공격력
+    let damage = player.attack;
 
     let critical = false;
 
 
-    if (
-        Math.random()
-        < player.critChance
-    ) {
+    // 치명타
+    if (Math.random() < player.critChance) {
 
-        damage *=
-            player.critDamage;
+        damage *= player.critDamage;
 
         critical = true;
-
     }
 
 
+    // 총알 생성
     bullets.push({
 
         x: player.x,
-
         y: player.y,
 
         vx: vx,
-
         vy: vy,
 
         damage: damage,
@@ -946,16 +947,32 @@ function shoot() {
         critical: critical,
 
         size: 20
-
     });
 
-    // ──────────────────────────────────────────
-    // [추가된 부분] 총알이 생성된 직후 사운드 재생
-    // ──────────────────────────────────────────
-    gunshotAudio.cloneNode(true).play().catch(() => {});
 
+    // ==========================================
+    // 총소리 재생
+    // ==========================================
+
+    // 기존 재생을 중단하고 처음부터 재생
+    gunshotAudio.pause();
+    gunshotAudio.currentTime = 0;
+
+    const sound = gunshotAudio.play();
+
+    if (sound !== undefined) {
+
+        sound.catch(function(error) {
+
+            console.log(
+                "총소리 재생 실패:",
+                error
+            );
+
+        });
+
+    }
 }
-
 // =========================================================
 // 충돌
 // =========================================================
