@@ -881,6 +881,9 @@ function bossShoot(boss) {
 // 총알 발사
 // =========================================================
 
+// 코드 시작 전 전역 변수로 sound 파일 하나 등록
+const gunshotAudio = new Audio('gunshot.mp3');
+
 function shoot() {
 
     const dx =
@@ -946,41 +949,12 @@ function shoot() {
 
     });
 
+    // ──────────────────────────────────────────
+    // [추가된 부분] 총알이 생성된 직후 사운드 재생
+    // ──────────────────────────────────────────
+    gunshotAudio.cloneNode(true).play().catch(() => {});
+
 }
-
-# 1초(1000ms)마다 자동으로 페이지를 갱신 (Auto-fire 간격)
-count = st_autorefresh(interval=1000, key="auto_fire_counter")
-
-
-# 오디오 자동 재생 함수
-def play_sound(file_path):
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-            b64 = base64.b64encode(data).decode()
-            sound_html = f"""
-                <audio autoplay style="display:none;">
-                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-                </audio>
-            """
-            st.markdown(sound_html, unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass
-
-
-# 게임 상태 관리
-if "bullets_fired" not in st.session_state:
-    st.session_state.bullets_fired = 0
-
-# 갱신될 때마다 총알 수 증가 및 소리 재생
-st.session_state.bullets_fired += 1
-
-# 발사 화면 표시
-st.subheader(f"💥 총알 자동 발사 중... (총 {st.session_state.bullets_fired}발 발사됨)")
-st.progress((st.session_state.bullets_fired % 10) * 10)
-
-# 총소리 재생 (gunshot.mp3 파일 필요)
-play_sound("gunshot.mp3")
 
 // =========================================================
 // 충돌
