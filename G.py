@@ -405,7 +405,7 @@ const stages = {{
     }},
 
     3: {{
-        duration: 35,
+        duration: 30,
         spawnRate: 0.75,
         normalHp: 75,
         normalSpeed: 110,
@@ -414,7 +414,7 @@ const stages = {{
     }},
 
     4: {{
-        duration: 40,
+        duration: 30,
         spawnRate: 0.65,
         normalHp: 100,
         normalSpeed: 120,
@@ -423,7 +423,7 @@ const stages = {{
     }},
 
     5: {{
-        duration: 45,
+        duration: 30,
         spawnRate: 0.55,
         normalHp: 130,
         normalSpeed: 135,
@@ -946,8 +946,6 @@ function updateStage(dt) {{
         }}
 
         if (stageTimer >= setting.duration) {{
-
-            if (enemies.length === 0) {{
 
                 finishStage();
 
