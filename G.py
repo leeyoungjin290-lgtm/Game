@@ -759,7 +759,7 @@ function spawnBoss() {
 
         height: 150,
 
-        hp: 5000,
+        hp: 50000,
 
         maxHp: 5000,
 
