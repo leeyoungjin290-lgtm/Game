@@ -1289,7 +1289,7 @@ function spawnBoss() {
 
         maxHp: 50000,
 
-        speed: 35,
+        speed: 0,
 
         damage: 35,
 
