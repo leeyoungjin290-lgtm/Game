@@ -829,7 +829,7 @@ let attackTimer = 0;
 
 let bossAttackTimer = 1.5;
 
-let bossAttackSpeed = 250;
+let bossAttackSpeed = 500;
 
 let bossAttackSpeedTimer = 2;
 
