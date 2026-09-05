@@ -827,11 +827,11 @@ let attackTimer = 0;
 // 보스 공격
 // ========================================================
 
-let bossAttackTimer = 1.5;
+let bossAttackTimer = 0.5;
 
 let bossAttackSpeed = 500;
 
-let bossAttackSpeedTimer = 2;
+let bossAttackSpeedTimer = 1;
 
 let bossSpawned = false;
 
