@@ -1421,11 +1421,11 @@ function bossShoot(boss) {
             Math.sin(angle)
             * 250,
 
-        width: 48,
+        width: 24,
 
-        height: 48,
+        height: 24,
 
-        radius: 22,
+        radius: 11,
 
         damage: 18,
 
