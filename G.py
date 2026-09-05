@@ -832,10 +832,10 @@ function bossShoot(boss) {
             y: boss.y,
 
             vx:
-                Math.cos(angle) * 250,
+                Math.cos(angle) * bossAttackSpeed,
 
             vy:
-                Math.sin(angle) * 250,
+                Math.sin(angle) * bossAttackSpeed,
 
             width: 48,
 
@@ -868,6 +868,9 @@ function bossShoot(boss) {
 
 
     boss.attackFlash = 0.25;
+
+    // 공격할 때마다 보스 탄환 속도 +75, 최대 1200
+    bossAttackSpeed = Math.min(1200, bossAttackSpeed + 75);
 
 }
 
