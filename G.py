@@ -831,7 +831,7 @@ let bossAttackTimer = 0.5;
 
 let bossAttackSpeed = 500;
 
-let bossAttackSpeedTimer = 1;
+let bossAttackSpeedTimer = 4;
 
 let bossSpawned = false;
 
