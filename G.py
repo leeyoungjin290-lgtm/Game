@@ -1039,7 +1039,7 @@ function spawnBoss() {
 
     bossSpawned = true;
 
-    const hp = 200000;
+    const hp = 300000;
 
     enemies.push({
         type: "boss",
