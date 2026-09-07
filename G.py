@@ -1031,7 +1031,7 @@ function spawnBoss() {
         y: 145,
         width: 145,
         height: 145,
-        hp,
+        hp: 100000,
         maxHp: hp,
         speed: 38,
         damage: 28,
