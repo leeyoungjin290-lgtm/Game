@@ -981,7 +981,7 @@ let bossPatternIndex = 0;
 let bossBasicShotTimer = 0;
 let bossSkillTimer = 2.0;
 const bossBasicShotInterval = 0.36;
-const bossSkillInterval = 5.0;
+const bossSkillInterval = 4.0;
 
 function rand(min, max) {
     return min + Math.random() * (max - min);
